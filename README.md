@@ -29,7 +29,7 @@ iPad AnonymousResearch 13.2.3
     
 ### syslog
 
-show all device system log like `deviceconsole`
+show all device system log like `idevicesyslog`
 
 ```base
 ./iconsole syslog -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

@@ -19,8 +19,8 @@ func syslogAction(ctx *cli.Context) error {
 			if err != nil {
 				return err
 			}
-			buf = bytes.Replace(buf[:n], []byte("\\^["), []byte("\x1B"), -1)
-			fmt.Print(string(buf))
+			repl := bytes.Replace(buf[:n], []byte{0x5c, 0x5e, 0x5b}, []byte{0x1b}, -1)
+			fmt.Print(string(repl))
 		}
 	})
 }
