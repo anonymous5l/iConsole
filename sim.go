@@ -84,7 +84,7 @@ func BD09ToWGS84(lon, lat float64) (float64, float64) {
 }
 
 func startSimAction(ctx *cli.Context) error {
-	udid := ctx.GlobalString("UDID")
+	udid := ctx.String("UDID")
 	lon := ctx.Float64("lon")
 	lat := ctx.Float64("lat")
 	coor := ctx.String("coor")
@@ -130,7 +130,7 @@ func startSimAction(ctx *cli.Context) error {
 }
 
 func stopSimAction(ctx *cli.Context) error {
-	udid := ctx.GlobalString("UDID")
+	udid := ctx.String("UDID")
 	return service("com.apple.dt.simulatelocation", udid, func(conn *tunnel.MixConnection) error {
 		if _, err := conn.Write([]byte{0x00, 0x00, 0x00, 0x01}); err != nil {
 			return err

@@ -21,7 +21,7 @@ var globalFlags = []cli.Flag{
 
 func session(udid string, cb func(*tunnel.LockdownConnection) error) error {
 	if udid == "" {
-		return errors.New("exec failed unset `UDID` argument")
+		return errors.New("exec failed not found `UDID` argument")
 	}
 
 	device, err := getDevice(udid)
