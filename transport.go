@@ -24,7 +24,7 @@ func transportAction(ctx *cli.Context) error {
 		t = strings.ToLower(args[0])
 		a = args[1]
 	} else {
-		return fmt.Errorf("Arguments not enough\nuseage example.\n\ticonsole relay -p 1234 tcp :1234\n\ticonsole relay -p 1234 tcp 127.0.0.1:443\n\ticonsole relay -p 1234 unix /opt/debugserver")
+		return fmt.Errorf("Arguments not enough\nuseage example.\n\ticonsole relay -u <xxx> -p 1234 tcp :1234\n\ticonsole relay -u <xxx> -p 1234 tcp 127.0.0.1:443\n\ticonsole relay -u <xxx> -p 1234 unix /opt/debugserver")
 	}
 
 	l, err := net.Listen(t, a)
@@ -71,7 +71,7 @@ func transportAction(ctx *cli.Context) error {
 				fmt.Printf("Dial device port `%d` error: %s\n", port, err)
 				return
 			}
-			fmt.Printf("Accept new connection %s\n", back.RawConn.RemoteAddr())
+			fmt.Printf("Accept new connection %s\n", front.RemoteAddr())
 			go func(front, back net.Conn) {
 				if _, err := io.Copy(front, back); err != nil {
 					_ = front.Close()

@@ -76,6 +76,9 @@ func getDevice(udid string) (frames.Device, error) {
 	var ds []frames.Device
 
 	for i, d := range devices {
+		if udid == "" && d.GetConnectionType() == "USB" {
+			return d, nil
+		}
 		if d.GetSerialNumber() == udid {
 			ds = append(ds, devices[i])
 		}
