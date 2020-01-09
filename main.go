@@ -73,20 +73,24 @@ func getDevice(udid string) (frames.Device, error) {
 		return nil, err
 	}
 
-	var device frames.Device
+	var ds []frames.Device
 
 	for i, d := range devices {
 		if d.GetSerialNumber() == udid {
-			device = devices[i]
-			break
+			ds = append(ds, devices[i])
 		}
 	}
 
-	if device == nil {
-		return nil, fmt.Errorf("device %s was not found", udid)
+	if len(ds) > 0 {
+		for _, d := range ds {
+			if d.GetConnectionType() == "USB" {
+				return d, nil
+			}
+		}
+		return ds[0], nil
 	}
 
-	return device, nil
+	return nil, fmt.Errorf("device %s was not found", udid)
 }
 
 func main() {
