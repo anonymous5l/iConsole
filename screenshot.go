@@ -25,7 +25,7 @@ func syncAndUnmarshal(service *tunnel.Service, obj interface{}) error {
 func screenShotCommand(ctx *cli.Context) error {
 	udid := ctx.String("UDID")
 
-	return session("com.apple.mobile.screenshotr", udid, func(conn *tunnel.MixConnection) error {
+	return service("com.apple.mobile.screenshotr", udid, func(conn *tunnel.MixConnection) error {
 
 		service := tunnel.GenerateService(conn)
 

@@ -25,31 +25,31 @@ const (
 	ResultBadVersion = 6
 )
 
-type BaseConnection struct {
-	conn    net.Conn
+type PlistConnection struct {
+	RawConn net.Conn
 	version uint32
 }
 
-func NewConnection() *BaseConnection {
-	return &BaseConnection{
+func NewPlistConnection() *PlistConnection {
+	return &PlistConnection{
 		version: 1,
 	}
 }
 
-func (this *BaseConnection) Close() {
-	if this.conn != nil {
-		_ = this.conn.Close()
-		this.conn = nil
+func (this *PlistConnection) Close() {
+	if this.RawConn != nil {
+		_ = this.RawConn.Close()
+		this.RawConn = nil
 	}
 }
 
-func (this *BaseConnection) Sync() (*frames.Package, error) {
+func (this *PlistConnection) Sync() (*frames.Package, error) {
 	var err error
 	var n int
 	var pkg *frames.Package
 
 	var pkgLen uint32
-	if err = binary.Read(this.conn, binary.LittleEndian, &pkgLen); err != nil {
+	if err = binary.Read(this.RawConn, binary.LittleEndian, &pkgLen); err != nil {
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func (this *BaseConnection) Sync() (*frames.Package, error) {
 	offset := 4
 
 	for {
-		n, err = this.conn.Read(pkgBuf[offset:])
+		n, err = this.RawConn.Read(pkgBuf[offset:])
 		if err != nil {
 			return nil, err
 		}
@@ -77,17 +77,17 @@ func (this *BaseConnection) Sync() (*frames.Package, error) {
 	return pkg, nil
 }
 
-func (this *BaseConnection) Dial() error {
+func (this *PlistConnection) Dial() error {
 	if conn, err := RawDial(); err != nil {
 		return err
 	} else {
-		this.conn = conn
+		this.RawConn = conn
 	}
 	return nil
 }
 
-func (this *BaseConnection) Send(frame interface{}) error {
-	if this.conn == nil {
+func (this *PlistConnection) Send(frame interface{}) error {
+	if this.RawConn == nil {
 		return ErrNoConnection
 	}
 
@@ -102,7 +102,7 @@ func (this *BaseConnection) Send(frame interface{}) error {
 		return err
 	}
 
-	if _, err := this.conn.Write(packageBuf); err != nil {
+	if _, err := this.RawConn.Write(packageBuf); err != nil {
 		return err
 	}
 
@@ -144,7 +144,7 @@ func analyzeDevice(properties map[string]interface{}) (frames.Device, error) {
 
 // just for once call
 func Devices() ([]frames.Device, error) {
-	conn := NewConnection()
+	conn := NewPlistConnection()
 	if err := conn.Dial(); err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func Devices() ([]frames.Device, error) {
 }
 
 func ReadBUID() (string, error) {
-	conn := NewConnection()
+	conn := NewPlistConnection()
 	if err := conn.Dial(); err != nil {
 		return "", err
 	}
@@ -208,7 +208,7 @@ func ReadBUID() (string, error) {
 }
 
 func Listen(msgNotifyer chan frames.Response) (context.CancelFunc, error) {
-	conn := NewConnection()
+	conn := NewPlistConnection()
 	if err := conn.Dial(); err != nil {
 		return nil, err
 	}
@@ -271,8 +271,8 @@ func Listen(msgNotifyer chan frames.Response) (context.CancelFunc, error) {
 	return cancelFunc, nil
 }
 
-func connectRaw(deviceId int, port int) (conn *BaseConnection, err error) {
-	conn = NewConnection()
+func connectRaw(deviceId int, port int) (conn *PlistConnection, err error) {
+	conn = NewPlistConnection()
 
 	if err = conn.Dial(); err != nil {
 		return
@@ -315,12 +315,12 @@ func connectRaw(deviceId int, port int) (conn *BaseConnection, err error) {
 	return
 }
 
-func Connect(device frames.Device, port int) (*BaseConnection, error) {
+func Connect(device frames.Device, port int) (*PlistConnection, error) {
 	return connectRaw(device.GetDeviceID(), port)
 }
 
 func readPairRecordRaw(udid string) (*frames.PairRecord, error) {
-	conn := NewConnection()
+	conn := NewPlistConnection()
 	if err := conn.Dial(); err != nil {
 		return nil, err
 	}
@@ -347,7 +347,16 @@ func readPairRecordRaw(udid string) (*frames.PairRecord, error) {
 	}
 
 	if m.Number != 0 {
-		return nil, fmt.Errorf("errCode %d", m.Result.Number)
+		switch m.Number {
+		case 1:
+			return nil, errors.New("BadCommand")
+		case 2:
+			return nil, errors.New("BadDev")
+		case 3:
+			return nil, errors.New("ConnectionRefused")
+		case 6:
+			return nil, errors.New("BadVersion")
+		}
 	}
 
 	var resp frames.PairRecord

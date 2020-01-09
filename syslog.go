@@ -11,7 +11,7 @@ import (
 func syslogAction(ctx *cli.Context) error {
 	udid := ctx.String("UDID")
 
-	return session("com.apple.syslog_relay", udid, func(conn *tunnel.MixConnection) error {
+	return service("com.apple.syslog_relay", udid, func(conn *tunnel.MixConnection) error {
 		buf := make([]byte, 0x19000)
 
 		for {

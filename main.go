@@ -19,7 +19,7 @@ var globalFlags = []cli.Flag{
 	},
 }
 
-func session(service string, udid string, cb func(*tunnel.MixConnection) error) error {
+func session(udid string, cb func(*tunnel.LockdownConnection) error) error {
 	if udid == "" {
 		return errors.New("exec failed unset `UDID` argument")
 	}
@@ -42,23 +42,29 @@ func session(service string, udid string, cb func(*tunnel.MixConnection) error) 
 
 	defer conn.StopSession()
 
-	resp, err := conn.StartService(service)
-	if err != nil {
-		return err
-	}
+	return cb(conn)
+}
 
-	serviceConn, err := conn.GenerateConnection(resp.Port, resp.EnableServiceSSL)
-	if err != nil {
-		return err
-	}
+func service(service string, udid string, cb func(*tunnel.MixConnection) error) error {
+	return session(udid, func(conn *tunnel.LockdownConnection) error {
+		resp, err := conn.StartService(service)
+		if err != nil {
+			return err
+		}
 
-	defer serviceConn.Close()
+		serviceConn, err := conn.GenerateConnection(resp.Port, resp.EnableServiceSSL)
+		if err != nil {
+			return err
+		}
 
-	if err := cb(serviceConn); err != nil {
-		return err
-	}
+		defer serviceConn.Close()
 
-	return nil
+		if err := cb(serviceConn); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func getDevice(udid string) (frames.Device, error) {
@@ -77,9 +83,7 @@ func getDevice(udid string) (frames.Device, error) {
 	}
 
 	if device == nil {
-		err := fmt.Errorf("device %s was not found", udid)
-		fmt.Println(err.Error())
-		return nil, err
+		return nil, fmt.Errorf("device %s was not found", udid)
 	}
 
 	return device, nil
@@ -101,6 +105,9 @@ func main() {
 		initSyslogCommond(),
 		initSimCommond(),
 		initScreenShotCommond(),
+		initSyncCommond(),
+		initValueCommond(),
+		initTransportCommand(),
 	}
 
 	if err := app.Run(os.Args); err != nil {

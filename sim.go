@@ -100,7 +100,7 @@ func startSimAction(ctx *cli.Context) error {
 		lon, lat = BD09ToWGS84(lon, lat)
 	}
 
-	return session("com.apple.dt.simulatelocation", udid, func(conn *tunnel.MixConnection) error {
+	return service("com.apple.dt.simulatelocation", udid, func(conn *tunnel.MixConnection) error {
 		buf := new(bytes.Buffer)
 		if err := binary.Write(buf, binary.BigEndian, uint32(0)); err != nil {
 			return err
@@ -131,7 +131,7 @@ func startSimAction(ctx *cli.Context) error {
 
 func stopSimAction(ctx *cli.Context) error {
 	udid := ctx.GlobalString("UDID")
-	return session("com.apple.dt.simulatelocation", udid, func(conn *tunnel.MixConnection) error {
+	return service("com.apple.dt.simulatelocation", udid, func(conn *tunnel.MixConnection) error {
 		if _, err := conn.Write([]byte{0x00, 0x00, 0x00, 0x01}); err != nil {
 			return err
 		}

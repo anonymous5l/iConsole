@@ -73,3 +73,44 @@ format `ScreenShot 2006-01-02 15.04.05.tiff`
 ./iconsole screenshot -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
+### sync
+
+enable disable get Wi-Fi communication
+
+```bash
+./iconsole sync -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Device enable WiFi connections
+```
+
+```bash
+./iconsole sync enable -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Successd
+```
+
+```bash
+./iconsole sync disable -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Successd
+```
+
+### relay
+
+relay device port to local normal usage for `debugserver`
+
+transport communication
+
+examples:
+
+```bash
+./iconsole relay -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX tcp :1234
+```
+
+```bash
+./iconsole relay -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX unix /opt/xx
+```
+
+```bash
+./iconsole relay -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX tcp 127.0.0.1:1234
+```

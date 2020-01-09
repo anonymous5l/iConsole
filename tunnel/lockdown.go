@@ -180,7 +180,7 @@ func LockdownDial(device frames.Device) (*LockdownConnection, error) {
 		return nil, err
 	}
 
-	s := &Service{conn: MixConnectionClient(c.conn)}
+	s := &Service{conn: MixConnectionClient(c.RawConn)}
 
 	return &LockdownConnection{conn: s, device: device}, nil
 }
@@ -520,7 +520,7 @@ func (this *LockdownConnection) GenerateConnection(port int, enableSSL bool) (*M
 		return nil, err
 	}
 
-	client := MixConnectionClient(base.conn)
+	client := MixConnectionClient(base.RawConn)
 
 	if enableSSL {
 		if err := client.Handshake(this.version, this.pairRecord); err != nil {
