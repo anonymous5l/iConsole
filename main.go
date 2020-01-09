@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"iconsole/frames"
 	"iconsole/tunnel"
@@ -20,10 +19,6 @@ var globalFlags = []cli.Flag{
 }
 
 func session(udid string, cb func(*tunnel.LockdownConnection) error) error {
-	if udid == "" {
-		return errors.New("exec failed not found `UDID` argument")
-	}
-
 	device, err := getDevice(udid)
 	if err != nil {
 		return err
@@ -100,7 +95,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "iConsole"
 	app.Usage = "iOS device tools"
-	app.Version = "1.0.0-Alpha"
+	app.Version = "1.0.0"
 	app.Authors = []cli.Author{
 		{
 			Name:  "anonymous5l",
