@@ -23,7 +23,25 @@ const (
 	// ???
 	// ???
 	ResultBadVersion = 6
+	ResultUnknown    = 100
 )
+
+func getError(num uint64) error {
+	switch num {
+	case ResultOk:
+		return nil
+	case ResultBadCommand:
+		return errors.New("BadCommand")
+	case ResultBadDev:
+		return errors.New("BadDev")
+	case ResultCommRefused:
+		return errors.New("CommRefused")
+	case ResultBadVersion:
+		return errors.New("BadVersion")
+	default:
+		return fmt.Errorf("ErrorCode %d", num)
+	}
+}
 
 type PlistConnection struct {
 	RawConn net.Conn
@@ -166,15 +184,22 @@ func Devices() ([]frames.Device, error) {
 	if err := respPkg.UnmarshalBody(&m); err != nil {
 		return nil, err
 	}
-	deviceList := m["DeviceList"].([]interface{})
-	for _, v := range deviceList {
-		item := v.(map[string]interface{})
-		properties := item["Properties"].(map[string]interface{})
-		device, err := analyzeDevice(properties)
-		if err != nil {
-			return nil, err
+
+	deviceList, ok := m["DeviceList"].([]interface{})
+	if ok {
+		for _, v := range deviceList {
+			item := v.(map[string]interface{})
+			properties := item["Properties"].(map[string]interface{})
+			device, err := analyzeDevice(properties)
+			if err != nil {
+				return nil, err
+			}
+			devices = append(devices, device)
 		}
-		devices = append(devices, device)
+	} else if n, ok := m["Number"].(uint64); ok {
+		return nil, getError(n)
+	} else {
+		return nil, getError(ResultUnknown)
 	}
 
 	return devices, nil
@@ -204,7 +229,13 @@ func ReadBUID() (string, error) {
 		return "", err
 	}
 
-	return m["BUID"].(string), nil
+	if buid, ok := m["BUID"].(string); ok {
+		return buid, nil
+	} else if n, ok := m["Number"].(uint64); ok {
+		return "", getError(n)
+	}
+
+	return "", getError(ResultUnknown)
 }
 
 func Listen(msgNotifyer chan frames.Response) (context.CancelFunc, error) {
@@ -240,28 +271,28 @@ func Listen(msgNotifyer chan frames.Response) (context.CancelFunc, error) {
 					return
 				}
 
-				mt := m["MessageType"].(string)
-
-				switch mt {
-				case "Attached":
-					device, err := analyzeDevice(m["Properties"].(map[string]interface{}))
-					if err != nil {
-						return
-					}
-					msgNotifyer <- &frames.DeviceAttached{
-						BaseResponse: frames.BaseResponse{MessageType: mt},
-						DeviceID:     int(m["DeviceID"].(uint64)),
-						Properties:   device,
-					}
-				case "Detached":
-					msgNotifyer <- &frames.DeviceDetached{
-						BaseResponse: frames.BaseResponse{MessageType: mt},
-						DeviceID:     int(m["DeviceID"].(uint64)),
-					}
-				case "Result":
-					msgNotifyer <- &frames.Result{
-						BaseResponse: frames.BaseResponse{MessageType: mt},
-						Number:       int(m["Number"].(uint64)),
+				if mt, ok := m["MessageType"].(string); ok {
+					switch mt {
+					case "Attached":
+						device, err := analyzeDevice(m["Properties"].(map[string]interface{}))
+						if err != nil {
+							return
+						}
+						msgNotifyer <- &frames.DeviceAttached{
+							BaseResponse: frames.BaseResponse{MessageType: mt},
+							DeviceID:     int(m["DeviceID"].(uint64)),
+							Properties:   device,
+						}
+					case "Detached":
+						msgNotifyer <- &frames.DeviceDetached{
+							BaseResponse: frames.BaseResponse{MessageType: mt},
+							DeviceID:     int(m["DeviceID"].(uint64)),
+						}
+					case "Result":
+						msgNotifyer <- &frames.Result{
+							BaseResponse: frames.BaseResponse{MessageType: mt},
+							Number:       int(m["Number"].(uint64)),
+						}
 					}
 				}
 			}
