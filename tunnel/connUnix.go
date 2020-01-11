@@ -1,4 +1,4 @@
-// +build linux darwin
+// +build linux darwin freebsd openbsd android netbsd solaris
 
 package tunnel
 
