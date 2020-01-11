@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"iconsole/frames"
 	"net"
+	"time"
 
 	"howett.net/plist"
 )
@@ -46,11 +47,14 @@ func getError(num uint64) error {
 type PlistConnection struct {
 	RawConn net.Conn
 	version uint32
+	Timeout time.Duration
 }
 
 func NewPlistConnection() *PlistConnection {
+	/* socket deadline 30 seconds */
 	return &PlistConnection{
 		version: 1,
+		Timeout: 30 * time.Second,
 	}
 }
 
@@ -76,6 +80,10 @@ func (this *PlistConnection) Sync() (*frames.Package, error) {
 
 	offset := 4
 
+	if err := this.RawConn.SetDeadline(time.Now().Add(this.Timeout)); err != nil {
+		return nil, err
+	}
+
 	for {
 		n, err = this.RawConn.Read(pkgBuf[offset:])
 		if err != nil {
@@ -96,7 +104,7 @@ func (this *PlistConnection) Sync() (*frames.Package, error) {
 }
 
 func (this *PlistConnection) Dial() error {
-	if conn, err := RawDial(); err != nil {
+	if conn, err := RawDial(this.Timeout); err != nil {
 		return err
 	} else {
 		this.RawConn = conn
@@ -120,6 +128,10 @@ func (this *PlistConnection) Send(frame interface{}) error {
 		return err
 	}
 
+	if err := this.RawConn.SetDeadline(time.Now().Add(this.Timeout)); err != nil {
+		return err
+	}
+
 	if _, err := this.RawConn.Write(packageBuf); err != nil {
 		return err
 	}
@@ -138,6 +150,18 @@ func analyzeDevice(properties map[string]interface{}) (frames.Device, error) {
 		SerialNumber:   properties["SerialNumber"].(string),
 	}
 
+	serialNumber := ""
+	if sn, ok := properties["USBSerialNumber"].(string); ok {
+		serialNumber = sn
+	} else if sn, ok := properties["SerialNumber"].(string); ok {
+		serialNumber = sn
+	}
+
+	udid := ""
+	if u, ok := properties["UDID"].(string); ok {
+		udid = u
+	}
+
 	switch ct {
 	case "USB":
 		device = &frames.USBDevice{
@@ -145,8 +169,8 @@ func analyzeDevice(properties map[string]interface{}) (frames.Device, error) {
 			ConnectionSpeed: int(properties["ConnectionSpeed"].(uint64)),
 			LocationID:      int(properties["LocationID"].(uint64)),
 			ProductID:       int(properties["ProductID"].(uint64)),
-			UDID:            properties["UDID"].(string),
-			USBSerialNumber: properties["USBSerialNumber"].(string),
+			UDID:            udid,
+			USBSerialNumber: serialNumber,
 		}
 	case "Network":
 		device = &frames.NetworkDevice{
@@ -210,14 +234,13 @@ func ReadBUID() (string, error) {
 	if err := conn.Dial(); err != nil {
 		return "", err
 	}
+	defer conn.Close()
 
 	frame := frames.CreateBaseRequest("ReadBUID")
 
 	if err := conn.Send(frame); err != nil {
 		return "", err
 	}
-
-	defer conn.Close()
 
 	pkg, err := conn.Sync()
 	if err != nil {
@@ -342,8 +365,7 @@ func connectRaw(deviceId int, port int) (conn *PlistConnection, err error) {
 		return
 	}
 
-	err = fmt.Errorf("errcode %d", result.Number)
-	return
+	return nil, getError(uint64(result.Number))
 }
 
 func Connect(device frames.Device, port int) (*PlistConnection, error) {
@@ -355,17 +377,15 @@ func readPairRecordRaw(udid string) (*frames.PairRecord, error) {
 	if err := conn.Dial(); err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 
-	frame := frames.CreateBaseRequest("ReadPairRecord")
 	req := &frames.PairRecordRequest{
-		BaseRequest:  *frame,
+		BaseRequest:  *frames.CreateBaseRequest("ReadPairRecord"),
 		PairRecordID: udid,
 	}
 	if err := conn.Send(req); err != nil {
 		return nil, err
 	}
-
-	defer conn.Close()
 
 	pkg, err := conn.Sync()
 	if err != nil {
@@ -378,16 +398,7 @@ func readPairRecordRaw(udid string) (*frames.PairRecord, error) {
 	}
 
 	if m.Number != 0 {
-		switch m.Number {
-		case 1:
-			return nil, errors.New("BadCommand")
-		case 2:
-			return nil, errors.New("BadDev")
-		case 3:
-			return nil, errors.New("ConnectionRefused")
-		case 6:
-			return nil, errors.New("BadVersion")
-		}
+		return nil, getError(uint64(m.Number))
 	}
 
 	var resp frames.PairRecord
@@ -400,4 +411,79 @@ func readPairRecordRaw(udid string) (*frames.PairRecord, error) {
 
 func ReadPairRecord(device frames.Device) (*frames.PairRecord, error) {
 	return readPairRecordRaw(device.GetSerialNumber())
+}
+
+func SavePairRecord(device frames.Device, record *frames.PairRecord) error {
+	conn := NewPlistConnection()
+	if err := conn.Dial(); err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	data, err := plist.Marshal(record, plist.XMLFormat)
+	if err != nil {
+		return err
+	}
+
+	req := &frames.SavePairRecordRequest{
+		BaseRequest:    *frames.CreateBaseRequest("SavePairRecord"),
+		PairRecordID:   device.GetSerialNumber(),
+		PairRecordData: data,
+		DeviceID:       device.GetDeviceID(),
+	}
+
+	var resp frames.Result
+
+	if err := conn.Send(req); err != nil {
+		return err
+	}
+
+	pkg, err := conn.Sync()
+	if err != nil {
+		return err
+	}
+
+	if err := pkg.UnmarshalBody(&resp); err != nil {
+		return err
+	}
+
+	if resp.Number != 0 {
+		return getError(uint64(resp.Number))
+	}
+
+	return nil
+}
+
+func DeletePairRecord(device frames.Device) error {
+	conn := NewPlistConnection()
+	if err := conn.Dial(); err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	req := &frames.DeletePairRecordRequest{
+		BaseRequest:  *frames.CreateBaseRequest("DeletePairRecord"),
+		PairRecordID: device.GetSerialNumber(),
+	}
+
+	var resp frames.Result
+
+	if err := conn.Send(req); err != nil {
+		return err
+	}
+
+	pkg, err := conn.Sync()
+	if err != nil {
+		return err
+	}
+
+	if err := pkg.UnmarshalBody(&resp); err != nil {
+		return err
+	}
+
+	if resp.Number != 0 {
+		return getError(uint64(resp.Number))
+	}
+
+	return nil
 }

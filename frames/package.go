@@ -21,7 +21,6 @@ func (this *ServicePackage) Pack(body interface{}, format int) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-
 	l := make([]byte, 4)
 	binary.BigEndian.PutUint32(l, uint32(len(frameXml)))
 	buf.Write(l)

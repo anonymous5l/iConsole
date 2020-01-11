@@ -79,6 +79,28 @@ type (
 		BaseResponse
 		Number int `plist:"Number"`
 	}
+
+	PairRecordRequest struct {
+		BaseRequest
+		PairRecordID string `plist:"PairRecordID"`
+	}
+
+	PairRecordResponse struct {
+		Result
+		PairRecordData []byte `plist:"PairRecordData"`
+	}
+
+	SavePairRecordRequest struct {
+		BaseRequest
+		PairRecordID   string `plist:"PairRecordID"`
+		PairRecordData []byte `plist:"PairRecordData"`
+		DeviceID       int    `plist:"DeviceID"`
+	}
+
+	DeletePairRecordRequest struct {
+		BaseRequest
+		PairRecordID string `plist:"PairRecordID"`
+	}
 )
 
 func (this *DeviceModel) GetConnectionType() string {
@@ -103,5 +125,6 @@ func CreateBaseRequest(mt string) *BaseRequest {
 		BundleID:            BundleID,
 		ClientVersionString: ClientVersion,
 		ProgramName:         ProgramName,
+		LibUSBMuxVersion:    LibUSBMuxVersion,
 	}
 }

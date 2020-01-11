@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"iconsole/frames"
-	"log"
 	"math/big"
 	"strconv"
 	"strings"
@@ -60,24 +60,14 @@ func getPairPemFormat(cert []byte, key *rsa.PrivateKey) ([]byte, []byte, error) 
 	return p, priv, nil
 }
 
-func (this *LockdownConnection) generatePairRecord() (*frames.PairRecord, error) {
+func (this *LockdownConnection) generatePairRecord(devicePubkeyPEM []byte) (*frames.PairRecord, error) {
 	record := &frames.PairRecord{}
 
-	buid, err := ReadBUID()
-	if err != nil {
-		return nil, err
+	if devicePubkeyPEM == nil {
+		return nil, errors.New("DevicePublic nil")
 	}
 
-	valueResp, err := this.GetValue("", "DevicePublicKey")
-	if err != nil {
-		return nil, err
-	}
-
-	if valueResp.Value == nil {
-		return nil, fmt.Errorf("%s", valueResp.Error)
-	}
-
-	block, _ := pem.Decode(valueResp.Value.([]byte))
+	block, _ := pem.Decode(devicePubkeyPEM)
 	deviceKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
 	if err != nil {
 		return nil, err
@@ -93,11 +83,7 @@ func (this *LockdownConnection) generatePairRecord() (*frames.PairRecord, error)
 		return nil, err
 	}
 
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		log.Fatalf("Failed to generate serial number: %s", err)
-	}
+	serialNumber := big.NewInt(0)
 
 	notBefore := time.Now()
 	notAfter := notBefore.Add(time.Hour * (24 * 365) * 10)
@@ -105,12 +91,11 @@ func (this *LockdownConnection) generatePairRecord() (*frames.PairRecord, error)
 	rootTemplate := x509.Certificate{
 		IsCA:                  true,
 		SerialNumber:          serialNumber,
+		Version:               2,
 		SignatureAlgorithm:    x509.SHA1WithRSA,
 		PublicKeyAlgorithm:    x509.RSA,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		BasicConstraintsValid: true,
 	}
 
@@ -120,14 +105,13 @@ func (this *LockdownConnection) generatePairRecord() (*frames.PairRecord, error)
 	}
 
 	hostTemplate := x509.Certificate{
-		IsCA:                  false,
 		SerialNumber:          serialNumber,
+		Version:               2,
 		SignatureAlgorithm:    x509.SHA1WithRSA,
 		PublicKeyAlgorithm:    x509.RSA,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		BasicConstraintsValid: true,
 	}
 
@@ -140,17 +124,20 @@ func (this *LockdownConnection) generatePairRecord() (*frames.PairRecord, error)
 
 	certPEM, certPrivPEM, err := getPairPemFormat(cert, hostKey)
 
+	h := sha1.New()
+	h.Write(rootKey.N.Bytes())
+	subjectKeyId := h.Sum(nil)
+
 	deviceTemplate := x509.Certificate{
-		IsCA:                  false,
 		SerialNumber:          serialNumber,
+		Version:               2,
 		SignatureAlgorithm:    x509.SHA1WithRSA,
 		PublicKeyAlgorithm:    x509.RSA,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		BasicConstraintsValid: true,
-		SubjectKeyId:          []byte("hash"),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		SubjectKeyId:          subjectKeyId,
 	}
 
 	deviceCert, err := x509.CreateCertificate(rand.Reader, &deviceTemplate, &rootTemplate, deviceKey, rootKey)
@@ -168,8 +155,6 @@ func (this *LockdownConnection) generatePairRecord() (*frames.PairRecord, error)
 	record.HostPrivateKey = certPrivPEM
 	record.RootCertificate = caPEM
 	record.RootPrivateKey = caPrivPEM
-	record.SystemBUID = buid
-	record.HostID = strings.ToUpper(uuid.NewV4().String())
 
 	return record, nil
 }
@@ -186,14 +171,45 @@ func LockdownDial(device frames.Device) (*LockdownConnection, error) {
 }
 
 func (this *LockdownConnection) Pair() (*frames.PairRecord, error) {
-	record, err := this.generatePairRecord()
+	valueResp, err := this.GetValue("", "DevicePublicKey")
 	if err != nil {
 		return nil, err
 	}
 
+	var devicePub []byte
+
+	if valueResp.Value == nil {
+		return nil, fmt.Errorf("%s", valueResp.Error)
+	} else if d, ok := valueResp.Value.([]byte); ok {
+		devicePub = d
+	}
+
+	buid, err := ReadBUID()
+	if err != nil {
+		return nil, err
+	}
+
+	wifiAddress := ""
+
+	valueResp, err = this.GetValue("", "WiFiAddress")
+	if err == nil && valueResp.Value != nil {
+		wifiAddress = valueResp.Value.(string)
+	}
+
+	record, err := this.generatePairRecord(devicePub)
+	if err != nil {
+		return nil, err
+	}
+
+	record.SystemBUID = buid
+	record.HostID = strings.ToUpper(uuid.NewV4().String())
+	hostPrivKey := record.HostPrivateKey
+	record.HostPrivateKey = nil
+	rootPrivKey := record.RootPrivateKey
+	record.RootPrivateKey = nil
+
 	request := &frames.PairRequest{
 		LockdownRequest: *frames.CreateLockdownRequest("Pair"),
-		HostName:        frames.ProgramName,
 		PairRecord:      record,
 		PairingOptions: map[string]interface{}{
 			"ExtendedPairingErrors": true,
@@ -208,7 +224,7 @@ func (this *LockdownConnection) Pair() (*frames.PairRecord, error) {
 		return nil, err
 	}
 
-	var resp frames.LockdownResponse
+	var resp frames.PairResponse
 	if err := pkg.UnmarshalBody(&resp); err != nil {
 		return nil, err
 	}
@@ -216,6 +232,11 @@ func (this *LockdownConnection) Pair() (*frames.PairRecord, error) {
 	if resp.Error != "" {
 		return nil, fmt.Errorf("%s", resp.Error)
 	}
+
+	record.EscrowBag = resp.EscrowBag
+	record.WiFiMACAddress = wifiAddress
+	record.HostPrivateKey = hostPrivKey
+	record.RootPrivateKey = rootPrivKey
 
 	return record, nil
 }
@@ -290,6 +311,14 @@ func (this *LockdownConnection) StartSession() error {
 	}
 
 	if resp.Error != "" {
+		if resp.Error == "InvalidHostID" {
+			/* try repair device */
+			this.pairRecord = nil
+			if err := DeletePairRecord(this.device); err != nil {
+				return err
+			}
+			return this.Handshake()
+		}
 		return fmt.Errorf("%s", resp.Error)
 	}
 
@@ -327,15 +356,23 @@ func (this *LockdownConnection) Handshake() error {
 		this.version[i], _ = strconv.Atoi(v)
 	}
 
-	resp, err := ReadPairRecord(this.device)
-	if err != nil {
+	if fResp, err := ReadPairRecord(this.device); err != nil {
 		// try pair device
-		if _, err := this.Pair(); err != nil {
+		if record, err := this.Pair(); err != nil {
 			return err
+		} else if resp, err := ReadPairRecord(this.device); err != nil {
+			if err := SavePairRecord(this.device, record); err != nil {
+				return err
+			} else {
+				this.pairRecord = record
+				return nil
+			}
+		} else {
+			this.pairRecord = resp
 		}
-		return fmt.Errorf("handshake failed %s", err)
+	} else {
+		this.pairRecord = fResp
 	}
-	this.pairRecord = resp
 
 	return nil
 }

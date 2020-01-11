@@ -2,8 +2,15 @@
 
 package tunnel
 
-import "net"
+import (
+	"net"
+	"time"
+)
 
-func RawDial() (net.Conn, error) {
-	return net.Dial("unix", "/var/run/usbmuxd")
+func RawDial(timeout time.Duration) (net.Conn, error) {
+	dialer := net.Dialer{
+		Timeout: timeout,
+	}
+
+	return dialer.Dial("unix", "/var/run/usbmuxd")
 }

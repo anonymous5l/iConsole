@@ -2,8 +2,15 @@
 
 package tunnel
 
-import "net"
+import (
+	"net"
+	"time"
+)
 
-func RawDial() (net.Conn, error) {
-	return net.Dial("tcp", "localhost:27015")
+func RawDial(timeout time.Duration) (net.Conn, error) {
+	dialer := net.Dialer{
+		Timeout: timeout,
+	}
+
+	return dialer.Dial("tcp", "127.0.0.1:27015")
 }

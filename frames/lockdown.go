@@ -64,31 +64,25 @@ type StartSessionResponse struct {
 	SessionID        string `plist:"SessionID"`
 }
 
-type PairRecordRequest struct {
-	BaseRequest
-	PairRecordID string `plist:"PairRecordID"`
-}
-
-type PairRecordResponse struct {
-	Result
-	PairRecordData []byte `plist:"PairRecordData"`
-}
-
 type PairRequest struct {
 	LockdownRequest
-	HostName       string                 `plist:"HostName"`
 	PairRecord     *PairRecord            `plist:"PairRecord"`
 	PairingOptions map[string]interface{} `plist:"PairingOptions"`
+}
+
+type PairResponse struct {
+	LockdownResponse
+	EscrowBag []byte `plist:"EscrowBag"`
 }
 
 type PairRecord struct {
 	DeviceCertificate []byte `plist:"DeviceCertificate"`
 	EscrowBag         []byte `plist:"EscrowBag,omitempty"`
 	HostCertificate   []byte `plist:"HostCertificate"`
-	HostPrivateKey    []byte `plist:"HostPrivateKey"`
+	HostPrivateKey    []byte `plist:"HostPrivateKey,omitempty"`
 	HostID            string `plist:"HostID"`
 	RootCertificate   []byte `plist:"RootCertificate"`
-	RootPrivateKey    []byte `plist:"RootPrivateKey"`
+	RootPrivateKey    []byte `plist:"RootPrivateKey,omitempty"`
 	SystemBUID        string `plist:"SystemBUID"`
 	WiFiMACAddress    string `plist:"WiFiMACAddress,omitempty"`
 }
