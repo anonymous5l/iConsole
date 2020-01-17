@@ -24,7 +24,7 @@ const (
 
 type LockdownConnection struct {
 	conn       *Service
-	version    []int
+	Version    []int
 	device     frames.Device
 	pairRecord *frames.PairRecord
 	sslSession *frames.StartSessionResponse
@@ -325,7 +325,7 @@ func (this *LockdownConnection) StartSession() error {
 	this.sslSession = &resp
 
 	if resp.EnableSessionSSL {
-		if err := this.conn.conn.Handshake(this.version, this.pairRecord); err != nil {
+		if err := this.conn.conn.Handshake(this.Version, this.pairRecord); err != nil {
 			return err
 		}
 	}
@@ -351,9 +351,9 @@ func (this *LockdownConnection) Handshake() error {
 	}
 
 	version := strings.Split(pvResp.Value.(string), ".")
-	this.version = make([]int, len(version))
+	this.Version = make([]int, len(version))
 	for i, v := range version {
-		this.version[i], _ = strconv.Atoi(v)
+		this.Version[i], _ = strconv.Atoi(v)
 	}
 
 	if fResp, err := ReadPairRecord(this.device); err != nil {
@@ -546,7 +546,7 @@ func (this *LockdownConnection) ProductName() (string, error) {
 }
 
 func (this *LockdownConnection) GenerateConnection(port int, enableSSL bool) (*MixConnection, error) {
-	if enableSSL && (this.pairRecord == nil || this.version == nil) {
+	if enableSSL && (this.pairRecord == nil || this.Version == nil) {
 		if err := this.Handshake(); err != nil {
 			return nil, err
 		}
@@ -560,7 +560,7 @@ func (this *LockdownConnection) GenerateConnection(port int, enableSSL bool) (*M
 	client := MixConnectionClient(base.RawConn)
 
 	if enableSSL {
-		if err := client.Handshake(this.version, this.pairRecord); err != nil {
+		if err := client.Handshake(this.Version, this.pairRecord); err != nil {
 			return nil, err
 		}
 	}
@@ -582,5 +582,5 @@ func (this *LockdownConnection) Close() {
 	}
 
 	this.pairRecord = nil
-	this.version = nil
+	this.Version = nil
 }

@@ -131,6 +131,10 @@ func startSimAction(ctx *cli.Context) error {
 
 func stopSimAction(ctx *cli.Context) error {
 	udid := ctx.String("UDID")
+
+	/*
+		version test in 12.3.1 can't stop but 13 up can stop
+	*/
 	return service("com.apple.dt.simulatelocation", udid, func(conn *tunnel.MixConnection) error {
 		if _, err := conn.Write([]byte{0x00, 0x00, 0x00, 0x01}); err != nil {
 			return err
@@ -143,18 +147,17 @@ func initSimCommond() cli.Command {
 	return cli.Command{
 		Name:      "simlocation",
 		ShortName: "sim",
-		Usage:     "A mounted developer disk image is required on the device, otherwise the DTSimulateLocation service is not available.",
+		Usage:     "A mounted developer disk image is required on the device.",
 		Subcommands: []cli.Command{
 			{
 				Name:   "start",
 				Action: startSimAction,
-				Flags: append(globalFlags, []cli.Flag{
-					cli.Float64Flag{
-						Name:     "latitude, lat",
-						EnvVar:   "LATITUDE",
-						Required: true,
-						Value:    0,
-					},
+				Flags: append(globalFlags, cli.Float64Flag{
+					Name:     "latitude, lat",
+					EnvVar:   "LATITUDE",
+					Required: true,
+					Value:    0,
+				},
 					cli.Float64Flag{
 						Name:     "longtitude, lon",
 						EnvVar:   "LONGTITUDE",
@@ -166,8 +169,7 @@ func initSimCommond() cli.Command {
 						EnvVar: "COORDINATE",
 						Usage:  "coordinate name `gcj02` `wsg84` `bd09` default `gcj02`",
 						Value:  "gcj02",
-					},
-				}...),
+					}),
 			},
 			{
 				Name:   "stop",

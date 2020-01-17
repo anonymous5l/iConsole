@@ -36,21 +36,13 @@ func (this *MixConnection) Handshake(version []int, record *frames.PairRecord) e
 		maxVersion = tls.VersionTLS13
 	}
 
-	hostCert, err := tls.X509KeyPair(record.HostCertificate, record.HostPrivateKey)
-	if err != nil {
-		return err
-	}
-
 	cert, err := tls.X509KeyPair(record.RootCertificate, record.RootPrivateKey)
 	if err != nil {
 		return err
 	}
 
 	cfg := &tls.Config{
-		Certificates: []tls.Certificate{
-			hostCert,
-			cert,
-		},
+		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
 		MinVersion:         minVersion,
 		MaxVersion:         maxVersion,

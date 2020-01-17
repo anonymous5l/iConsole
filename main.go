@@ -110,6 +110,7 @@ func main() {
 		initSyncCommond(),
 		initValueCommond(),
 		initTransportCommand(),
+		initMountCommand(),
 	}
 
 	if err := app.Run(os.Args); err != nil {

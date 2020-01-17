@@ -15,7 +15,7 @@ type ServicePackage struct {
 }
 
 func (this *ServicePackage) Pack(body interface{}, format int) ([]byte, error) {
-	frameXml, err := plist.Marshal(body, format)
+	frameXml, err := plist.MarshalIndent(body, format, "\t")
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ type Package struct {
 }
 
 func (this *Package) Pack(body interface{}) ([]byte, error) {
-	frameXml, err := plist.Marshal(body, plist.XMLFormat)
+	frameXml, err := plist.MarshalIndent(body, plist.XMLFormat, "\t")
 	if err != nil {
 		return nil, err
 	}

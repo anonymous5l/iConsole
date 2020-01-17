@@ -43,32 +43,30 @@ func (this *Service) Sync() (*frames.ServicePackage, error) {
 		return nil, ErrNoConnection
 	}
 
+	pkgBuf := make([]byte, 0xffff)
+
 	var err error
 	var n int
 	var pkg *frames.ServicePackage
 
-	var pkgLen uint32
-	if err = binary.Read(this.conn, binary.BigEndian, &pkgLen); err != nil {
-		return nil, err
-	}
-
-	pkgBuf := make([]byte, pkgLen+4)
-	binary.BigEndian.PutUint32(pkgBuf, pkgLen)
-
-	offset := 4
+	offset := 0
+	pkgLen := 0
 
 	for {
 		n, err = this.conn.Read(pkgBuf[offset:])
-		if err != nil {
+		if err != nil && n == 0 {
 			return nil, err
 		}
-		if offset+n >= len(pkgBuf) {
+		offset += n
+		if pkgLen == 0 {
+			pkgLen = int(binary.BigEndian.Uint32(pkgBuf[:4])) + 4
+		}
+		if offset >= pkgLen {
 			break
 		}
-		offset += n
 	}
 
-	pkg, err = frames.UnpackLockdown(pkgBuf)
+	pkg, err = frames.UnpackLockdown(pkgBuf[:offset])
 	if err != nil {
 		return nil, err
 	}
