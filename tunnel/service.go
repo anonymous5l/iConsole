@@ -1,14 +1,20 @@
 package tunnel
 
 import (
+	"bytes"
 	"encoding/binary"
 	"iconsole/frames"
+	"net"
 
 	"howett.net/plist"
 )
 
 type Service struct {
 	conn *MixConnection
+}
+
+func (this *Service) GetConnection() net.Conn {
+	return this.conn
 }
 
 func (this *Service) Send(frame interface{}, format int) error {
@@ -44,6 +50,7 @@ func (this *Service) Sync() (*frames.ServicePackage, error) {
 	}
 
 	pkgBuf := make([]byte, 0xffff)
+	buf := bytes.NewBuffer([]byte{})
 
 	var err error
 	var n int
@@ -53,20 +60,26 @@ func (this *Service) Sync() (*frames.ServicePackage, error) {
 	pkgLen := 0
 
 	for {
-		n, err = this.conn.Read(pkgBuf[offset:])
+		n, err = this.conn.Read(pkgBuf)
+
 		if err != nil && n == 0 {
 			return nil, err
 		}
+
+		buf.Write(pkgBuf[:n])
+
 		offset += n
+
 		if pkgLen == 0 {
 			pkgLen = int(binary.BigEndian.Uint32(pkgBuf[:4])) + 4
 		}
+
 		if offset >= pkgLen {
 			break
 		}
 	}
 
-	pkg, err = frames.UnpackLockdown(pkgBuf[:offset])
+	pkg, err = frames.UnpackLockdown(buf.Bytes())
 	if err != nil {
 		return nil, err
 	}

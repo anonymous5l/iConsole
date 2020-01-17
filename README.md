@@ -114,3 +114,27 @@ examples:
 ```bash
 ./iconsole relay -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX tcp 127.0.0.1:1234
 ```
+
+### mount
+
+mount Developer image
+
+Developer image can be found in
+ 
+`/Application/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/<iOSVersion>/`
+
+examples:
+
+```bash
+./iconsole mount list
+```
+
+```bash
+./iconsole mount <Developer.dmg> <Developer.dmg.signature>
+```
+
+### afc
+
+support fully apple file conduit
+
+detail see program help

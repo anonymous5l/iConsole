@@ -40,28 +40,6 @@ func session(udid string, cb func(*tunnel.LockdownConnection) error) error {
 	return cb(conn)
 }
 
-func service(service string, udid string, cb func(*tunnel.MixConnection) error) error {
-	return session(udid, func(conn *tunnel.LockdownConnection) error {
-		resp, err := conn.StartService(service)
-		if err != nil {
-			return err
-		}
-
-		serviceConn, err := conn.GenerateConnection(resp.Port, resp.EnableServiceSSL)
-		if err != nil {
-			return err
-		}
-
-		defer serviceConn.Close()
-
-		if err := cb(serviceConn); err != nil {
-			return err
-		}
-
-		return nil
-	})
-}
-
 func getDevice(udid string) (frames.Device, error) {
 	devices, err := tunnel.Devices()
 	if err != nil {
@@ -111,6 +89,7 @@ func main() {
 		initValueCommond(),
 		initTransportCommand(),
 		initMountCommand(),
+		initAFCCommand(),
 	}
 
 	if err := app.Run(os.Args); err != nil {

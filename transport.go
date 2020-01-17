@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/urfave/cli"
 )
@@ -71,6 +72,13 @@ func transportAction(ctx *cli.Context) error {
 				fmt.Printf("Dial device port `%d` error: %s\n", port, err)
 				return
 			}
+
+			/* clean timeout */
+			if err := back.RawConn.SetDeadline(time.Time{}); err != nil {
+				fmt.Printf("SetDeadline %s\n", err)
+				return
+			}
+
 			fmt.Printf("Accept new connection %s\n", front.RemoteAddr())
 			go func(front, back net.Conn) {
 				if _, err := io.Copy(front, back); err != nil {

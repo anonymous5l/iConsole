@@ -272,8 +272,12 @@ func (this *LockdownConnection) StopSession() error {
 	return nil
 }
 
+func (this *LockdownConnection) IsSessionStart() bool {
+	return this.sslSession != nil
+}
+
 func (this *LockdownConnection) StartSession() error {
-	if this.sslSession != nil {
+	if this.IsSessionStart() {
 		if err := this.StopSession(); err != nil {
 			return err
 		}
@@ -377,13 +381,21 @@ func (this *LockdownConnection) Handshake() error {
 	return nil
 }
 
+func (this *LockdownConnection) StartServiceWithEscroBag(service string) (*frames.StartServiceResponse, error) {
+	return this.rawStartService(service, true)
+}
+
 func (this *LockdownConnection) StartService(service string) (*frames.StartServiceResponse, error) {
+	return this.rawStartService(service, false)
+}
+
+func (this *LockdownConnection) rawStartService(service string, escrowBag bool) (*frames.StartServiceResponse, error) {
 	request := &frames.StartServiceRequest{
 		LockdownRequest: *frames.CreateLockdownRequest("StartService"),
 		Service:         service,
 	}
 
-	if this.pairRecord != nil {
+	if this.pairRecord != nil && escrowBag {
 		request.EscrowBag = this.pairRecord.EscrowBag
 	}
 
@@ -402,7 +414,7 @@ func (this *LockdownConnection) StartService(service string) (*frames.StartServi
 	}
 
 	if resp.Error != "" {
-		return nil, fmt.Errorf("%s", resp.Error)
+		return nil, errors.New(resp.Error)
 	}
 
 	return &resp, nil
@@ -554,6 +566,11 @@ func (this *LockdownConnection) GenerateConnection(port int, enableSSL bool) (*M
 
 	base, err := Connect(this.device, port)
 	if err != nil {
+		return nil, err
+	}
+
+	/* clean deadline */
+	if err := base.RawConn.SetDeadline(time.Time{}); err != nil {
 		return nil, err
 	}
 

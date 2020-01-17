@@ -3,26 +3,29 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"iconsole/tunnel"
+	"iconsole/services"
 
 	"github.com/urfave/cli"
 )
 
+func logCb(_ *services.SyslogRelayService, log []byte) bool {
+	repl := string(bytes.Replace(log, []byte{0x5c, 0x5e, 0x5b}, []byte{0x1b}, -1))
+	fmt.Print(repl)
+	return true
+}
+
 func syslogAction(ctx *cli.Context) error {
 	udid := ctx.String("UDID")
 
-	return service("com.apple.syslog_relay", udid, func(conn *tunnel.MixConnection) error {
-		buf := make([]byte, 0x19000)
+	if device, err := getDevice(udid); err != nil {
+		return err
+	} else if srs, err := services.NewSyslogRelayService(device); err != nil {
+		return err
+	} else if err := srs.Relay(logCb); err != nil {
+		return err
+	}
 
-		for {
-			n, err := conn.Read(buf)
-			if err != nil {
-				return err
-			}
-			repl := bytes.Replace(buf[:n], []byte{0x5c, 0x5e, 0x5b}, []byte{0x1b}, -1)
-			fmt.Print(string(repl))
-		}
-	})
+	return nil
 }
 
 func initSyslogCommond() cli.Command {
