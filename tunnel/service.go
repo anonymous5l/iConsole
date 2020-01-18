@@ -49,7 +49,6 @@ func (this *Service) Sync() (*frames.ServicePackage, error) {
 		return nil, ErrNoConnection
 	}
 
-	pkgBuf := make([]byte, 0xffff)
 	buf := bytes.NewBuffer([]byte{})
 
 	var err error
@@ -59,6 +58,7 @@ func (this *Service) Sync() (*frames.ServicePackage, error) {
 	offset := 0
 	pkgLen := 0
 
+	pkgBuf := make([]byte, 0x4)
 	for {
 		n, err = this.conn.Read(pkgBuf)
 
@@ -72,6 +72,7 @@ func (this *Service) Sync() (*frames.ServicePackage, error) {
 
 		if pkgLen == 0 {
 			pkgLen = int(binary.BigEndian.Uint32(pkgBuf[:4])) + 4
+			pkgBuf = make([]byte, pkgLen-4)
 		}
 
 		if offset >= pkgLen {

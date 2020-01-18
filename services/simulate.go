@@ -86,7 +86,7 @@ type SimulateLocationService struct {
 }
 
 func NewSimulateLocationService(device frames.Device) (*SimulateLocationService, error) {
-	serv, err := startService(SimulateLocationServicename, device)
+	serv, err := startService(SimulateLocationServiceName, device)
 	if err != nil {
 		return nil, err
 	}

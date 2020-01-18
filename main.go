@@ -90,6 +90,7 @@ func main() {
 		initTransportCommand(),
 		initMountCommand(),
 		initAFCCommand(),
+		initArrest(),
 	}
 
 	if err := app.Run(os.Args); err != nil {

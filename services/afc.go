@@ -400,7 +400,7 @@ func (this *AFCService) GetDeviceInfo() (*AFCDeviceInfo, error) {
 	}
 }
 
-func (this *AFCService) ReadDirectory(p string, prefix bool) ([]string, error) {
+func (this *AFCService) ReadDirectory(p string) ([]string, error) {
 	if err := this.send(AFCOperationReadDir, getCStr(p), nil); err != nil {
 		return nil, err
 	}
@@ -408,17 +408,7 @@ func (this *AFCService) ReadDirectory(p string, prefix bool) ([]string, error) {
 	if b, err := this.recv(); err != nil {
 		return nil, err
 	} else {
-		final := b.Array()[2:]
-
-		if !prefix {
-			return final, nil
-		}
-
-		var fix []string
-		for _, v := range final {
-			fix = append(fix, path.Join(p, v))
-		}
-		return fix, nil
+		return b.Array(), nil
 	}
 }
 

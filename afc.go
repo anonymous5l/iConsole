@@ -7,6 +7,7 @@ import (
 	"iconsole/services"
 	"io"
 	"os"
+	"path"
 
 	"github.com/urfave/cli"
 )
@@ -71,16 +72,18 @@ func afcLsAction(ctx *cli.Context) error {
 	}
 	defer afc.Close()
 
-	if p, err := afc.ReadDirectory(args[0], true); err != nil {
+	if p, err := afc.ReadDirectory(args[0]); err != nil {
 		return err
 	} else {
 		for _, v := range p {
-			if i, err := afc.GetFileInfo(v); err != nil {
-				return err
-			} else if i.IsDir() {
-				fmt.Printf("%7s %s \x1B[1;34m%s\x1B[0m\n", byteCountDecimal(i.Size()), i.ModTime().Format("2006-01-02 15:04:05"), i.Name())
-			} else {
-				fmt.Printf("%7s %s %s\n", byteCountDecimal(i.Size()), i.ModTime().Format("2006-01-02 15:04:05"), i.Name())
+			if v != "." && v != ".." {
+				if i, err := afc.GetFileInfo(path.Join(args[0], v)); err != nil {
+					return err
+				} else if i.IsDir() {
+					fmt.Printf("%7s %s \x1B[1;34m%s\x1B[0m\n", byteCountDecimal(i.Size()), i.ModTime().Format("2006-01-02 15:04:05"), i.Name())
+				} else {
+					fmt.Printf("%7s %s %s\n", byteCountDecimal(i.Size()), i.ModTime().Format("2006-01-02 15:04:05"), i.Name())
+				}
 			}
 		}
 	}
@@ -89,10 +92,13 @@ func afcLsAction(ctx *cli.Context) error {
 }
 
 func printTree(afc *services.AFCService, raw string, hasNexts []bool) error {
-	if p, err := afc.ReadDirectory(raw, true); err != nil {
+	if p, err := afc.ReadDirectory(raw); err != nil {
 		return err
 	} else {
 		for i, v := range p {
+			if v == "." || v == ".." {
+				continue
+			}
 			b := &bytes.Buffer{}
 			for _, hasNext := range hasNexts {
 				if hasNext {
@@ -102,7 +108,8 @@ func printTree(afc *services.AFCService, raw string, hasNexts []bool) error {
 				}
 			}
 			var name string
-			info, err := afc.GetFileInfo(v)
+			fullPath := path.Join(raw, v)
+			info, err := afc.GetFileInfo(fullPath)
 			if err != nil {
 				return err
 			} else if info.IsDir() {
@@ -131,7 +138,7 @@ func printTree(afc *services.AFCService, raw string, hasNexts []bool) error {
 				} else {
 					hasNexts = append(hasNexts, true)
 				}
-				err := printTree(afc, v, hasNexts)
+				err := printTree(afc, fullPath, hasNexts)
 				hasNexts = hasNexts[:len(hasNexts)-1]
 				if err != nil {
 					return err
@@ -163,6 +170,28 @@ func afcTreeAction(ctx *cli.Context) error {
 	defer afc.Close()
 
 	return printTree(afc, args[0], []bool{})
+}
+
+func afcRemoveAction(ctx *cli.Context) error {
+	udid := ctx.String("UDID")
+
+	args := ctx.Args()
+	if len(args) <= 0 {
+		return cli.ShowSubcommandHelp(ctx)
+	}
+
+	device, err := getDevice(udid)
+	if err != nil {
+		return err
+	}
+
+	afc, err := services.NewAFCService(device)
+	if err != nil {
+		return err
+	}
+	defer afc.Close()
+
+	return afc.RemoveAll(args[0])
 }
 
 func afcUploadAction(ctx *cli.Context) error {
@@ -295,6 +324,12 @@ func initAFCCommand() cli.Command {
 				Name:   "download",
 				Usage:  "download <dst file path> <src file path>",
 				Action: afcDownloadAction,
+				Flags:  globalFlags,
+			},
+			{
+				Name:   "remove",
+				Usage:  "remove <file>",
+				Action: afcRemoveAction,
 				Flags:  globalFlags,
 			},
 		},

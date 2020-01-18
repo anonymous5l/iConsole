@@ -6,11 +6,13 @@ import (
 )
 
 const (
-	MountServiceName            = "com.apple.mobile.mobile_image_mounter"
-	ScreenshotServiceName       = "com.apple.mobile.screenshotr"
-	SimulateLocationServicename = "com.apple.dt.simulatelocation"
-	SyslogRelayServiceName      = "com.apple.syslog_relay"
-	AFCServiceName              = "com.apple.afc"
+	MountServiceName             = "com.apple.mobile.mobile_image_mounter"
+	ScreenshotServiceName        = "com.apple.mobile.screenshotr"
+	SimulateLocationServiceName  = "com.apple.dt.simulatelocation"
+	SyslogRelayServiceName       = "com.apple.syslog_relay"
+	AFCServiceName               = "com.apple.afc"
+	HouseArrestServiceName       = "com.apple.mobile.house_arrest"
+	InstallationProxyServiceName = "com.apple.mobile.installation_proxy"
 )
 
 // the LockdownConnection must start session
