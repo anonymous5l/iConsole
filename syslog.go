@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"iconsole/services"
 
@@ -9,8 +8,7 @@ import (
 )
 
 func logCb(_ *services.SyslogRelayService, log []byte) bool {
-	repl := string(bytes.Replace(log, []byte{0x5c, 0x5e, 0x5b}, []byte{0x1b}, -1))
-	fmt.Print(repl)
+	fmt.Print(string(log))
 	return true
 }
 

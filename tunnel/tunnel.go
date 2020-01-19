@@ -334,8 +334,10 @@ func connectRaw(deviceId int, port int) (conn *PlistConnection, err error) {
 
 	defer func() {
 		if err != nil {
-			conn.Close()
-			conn = nil
+			if conn != nil {
+				conn.Close()
+				conn = nil
+			}
 		}
 	}()
 

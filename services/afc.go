@@ -714,7 +714,6 @@ func (this *AFCService) HashWithRange(start, end uint64, path string) ([]byte, e
 	} else if err := b.Error(); err != nil {
 		return nil, err
 	} else {
-		fmt.Printf("%x\n", b)
 		return b.Payload, nil
 	}
 }
