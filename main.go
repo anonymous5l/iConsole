@@ -91,6 +91,7 @@ func main() {
 		initMountCommand(),
 		initAFCCommand(),
 		initArrest(),
+		initProcessCommond(),
 	}
 
 	if err := app.Run(os.Args); err != nil {

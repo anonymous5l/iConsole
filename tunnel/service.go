@@ -13,6 +13,10 @@ type Service struct {
 	conn *MixConnection
 }
 
+func (this *Service) DismissSSL() error {
+	return this.conn.DismissSSL()
+}
+
 func (this *Service) GetConnection() net.Conn {
 	return this.conn
 }
@@ -29,11 +33,8 @@ func (this *Service) Send(frame interface{}, format int) error {
 		return err
 	}
 
-	if _, err := this.conn.Write(packageBuf); err != nil {
-		return err
-	}
-
-	return nil
+	_, err = this.conn.Write(packageBuf)
+	return err
 }
 
 func (this *Service) SendXML(frame interface{}) error {

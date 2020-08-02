@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"iconsole/services"
-	"io"
 	"os"
 	"time"
 
@@ -25,17 +23,15 @@ func screenShotCommand(ctx *cli.Context) error {
 	}
 	defer ss.Close()
 
-	buf := bytes.NewBuffer([]byte{})
-	if err := ss.Shot(buf); err != nil {
-		return err
-	}
-
 	fs, err := os.Create(fmt.Sprintf("Screenshot-%s.png", time.Now().Format("2006-01-02 15.04.05")))
 	if err != nil {
 		return err
 	}
 	defer fs.Close()
-	io.Copy(fs, buf)
+	if err := ss.Shot(fs); err != nil {
+		return err
+	}
+
 	return nil
 }
 

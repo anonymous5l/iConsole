@@ -19,8 +19,15 @@ func MixConnectionClient(conn net.Conn) *MixConnection {
 	}
 }
 
-func (this *MixConnection) DismissSSL() {
+func (this *MixConnection) DismissSSL() error {
+	// in openssl should be shutdown ssl connection
+	// but in there i don't know how to dismiss that
+
+	//if err := this.ssl.CloseWrite(); err != nil {
+	//	return err
+	//}
 	this.ssl = nil
+	return nil
 }
 
 func (this *MixConnection) Handshake(version []int, record *frames.PairRecord) error {

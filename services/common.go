@@ -13,6 +13,7 @@ const (
 	AFCServiceName               = "com.apple.afc"
 	HouseArrestServiceName       = "com.apple.mobile.house_arrest"
 	InstallationProxyServiceName = "com.apple.mobile.installation_proxy"
+	InstrumentsServiceName       = "com.apple.instruments.remoteserver"
 )
 
 // the LockdownConnection must start session
